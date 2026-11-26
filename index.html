@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>台北市立動物園｜動物尋寶賓果挑戰 v1.9</title>
+  <title>台北市立動物園｜動物尋寶賓果挑戰 v1.10</title>
   <style>
     /* ==========================================================================
        一、設計系統變數（高對比、大字體、國小五年級 iPad 單機離線觸控配色）
@@ -993,10 +993,83 @@
       border: 2.5px solid #B45309;
     }
 
+    .btn-livecam {
+      background: #0369A1;
+      color: var(--white);
+    }
+
     .btn-clear-cell {
       background: var(--danger-soft);
       color: var(--danger);
       border: 2.5px solid #FCA5A5;
+    }
+
+    .btn-span-2 {
+      grid-column: 1 / -1;
+    }
+
+    /* 離螢幕但保持可存取的檔案選擇器（修正 iPad Safari 阻擋 display:none 相機呼叫問題） */
+    .visually-hidden-file {
+      position: fixed;
+      left: -9999px;
+      top: 0;
+      width: 1px;
+      height: 1px;
+      opacity: 0.01;
+      overflow: hidden;
+    }
+
+    /* 網頁內建即時相機觀景窗樣式 */
+    .live-video-box {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      background: #0F172A;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 3px solid var(--green-deep);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .live-video-box video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .qr-action-grid {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 10px;
+    }
+
+    @media (max-width: 460px) {
+      .qr-action-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .btn-open-link {
+      min-height: 58px;
+      border-radius: 16px;
+      border: 2.5px solid var(--green-deep);
+      background: var(--green-soft);
+      color: var(--green-deep);
+      font-size: 1.08rem;
+      font-weight: 900;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .btn-open-link:active {
+      transform: scale(0.96);
     }
 
     /* QR Code 彈窗專用樣式 */
@@ -1210,7 +1283,7 @@
     <div class="header-inner">
       <div class="title-cluster">
         <h1 class="app-title">🐾 台北市立動物園｜動物尋寶賓果挑戰</h1>
-        <span class="version-badge">v1.9</span>
+        <span class="version-badge">v1.10</span>
       </div>
 
       <!-- ① QR Code 掃碼連結 ➔ ② 全螢幕 toggle ➔ ③ 遊園地圖 ➔ ④ 網頁操作說明 -->
@@ -1422,9 +1495,9 @@
   <!-- 頁尾（只在中央顯示 Design：S.C. Kuo） -->
   <footer class="app-footer">Design：S.C. Kuo</footer>
 
-  <!-- 隱藏的相機與相簿檔案選擇器 -->
-  <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;" />
-  <input type="file" id="albumInput" accept="image/*" style="display: none;" />
+  <!-- 離螢幕相機與相簿檔案選擇器（兼容 iPadOS Safari 與各類平板瀏覽器） -->
+  <input type="file" id="cameraInput" accept="image/*" capture="environment" class="visually-hidden-file" />
+  <input type="file" id="albumInput" accept="image/*" class="visually-hidden-file" />
 
   <!-- ==========================================================================
        彈窗 1：動物任務拍照與上傳互動視窗
@@ -1450,17 +1523,45 @@
       </div>
 
       <div class="modal-btn-grid">
-        <button type="button" id="btnModalCamera" class="touch-action-btn btn-cam">
+        <label for="cameraInput" id="btnModalCamera" role="button" tabindex="0" class="touch-action-btn btn-cam">
           <span>📷 開啟相機拍照</span>
-        </button>
-        <button type="button" id="btnModalAlbum" class="touch-action-btn btn-alb">
+        </label>
+        <label for="albumInput" id="btnModalAlbum" role="button" tabindex="0" class="touch-action-btn btn-alb">
           <span>🖼️ 從 iPad 相簿選取</span>
+        </label>
+        <button type="button" id="btnModalLiveCam" class="touch-action-btn btn-livecam">
+          <span>🎥 網頁鏡頭即時拍</span>
         </button>
         <button type="button" id="btnModalNoPhoto" class="touch-action-btn btn-nophoto">
-          <span>✅ 標記已過關（無照片模式）</span>
+          <span>✅ 標記已過關（無照片）</span>
         </button>
-        <button type="button" id="btnModalClear" class="touch-action-btn btn-clear-cell">
+        <button type="button" id="btnModalClear" class="touch-action-btn btn-clear-cell btn-span-2">
           <span>🗑️ 清除此格紀錄</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       彈窗 1B：網頁內建即時相機觀景窗（支援後鏡頭/前鏡頭切換與即時快門）
+       ========================================================================== -->
+  <div id="liveCameraModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="liveCamTitle">
+    <div class="modal-dialog" style="max-width: 600px;">
+      <div class="modal-top">
+        <h3 id="liveCamTitle" class="modal-heading">🎥 網頁鏡頭即時拍照</h3>
+        <button type="button" id="btnCloseLiveCam" class="modal-close-x" aria-label="關閉相機">✕</button>
+      </div>
+
+      <div class="live-video-box">
+        <video id="liveCameraVideo" autoplay playsinline muted></video>
+      </div>
+
+      <div class="modal-btn-grid">
+        <button type="button" id="btnCaptureShutter" class="touch-action-btn btn-cam">
+          <span>📸 拍下合照</span>
+        </button>
+        <button type="button" id="btnSwitchFacing" class="touch-action-btn btn-alb">
+          <span>🔄 切換前後鏡頭</span>
         </button>
       </div>
     </div>
@@ -1488,9 +1589,14 @@
         <input type="text" id="qrUrlInput" class="url-text-input" />
       </div>
 
-      <button type="button" id="btnCopyUrl" class="btn-copy-url">
-        <span>📋 一鍵複製網址</span>
-      </button>
+      <div class="qr-action-grid">
+        <button type="button" id="btnCopyUrl" class="btn-copy-url">
+          <span>📋 一鍵複製網址</span>
+        </button>
+        <a id="btnOpenQrLink" href="https://www.zoo.gov.taipei/" target="_blank" rel="noopener noreferrer" class="btn-open-link">
+          <span>🔗 開啟此連結</span>
+        </a>
+      </div>
     </div>
   </div>
 
@@ -2414,7 +2520,7 @@
   <script>
     /**
      * ==========================================================================
-     * 台北市立動物園｜動物尋寶賓果挑戰 v1.9（100% 單機離線運行版）
+     * 台北市立動物園｜動物尋寶賓果挑戰 v1.10（100% 單機離線運行版）
      * - 零外部 CDN / 零網路依賴，內嵌臺北市立動物園離線遊園地圖
      * - IndexedDB + LocalStorage 雙層本機離線儲存（支援 file:// 與 Safari）
      * - ISO/IEC 18004 標準 QR Code 純 JS 矩陣產生器（MSB 優先與整數像素渲染）
@@ -2941,8 +3047,8 @@
       "五年十四班": "五年 14 班"
     };
 
-    const STORAGE_KEY = "tpzoo_bingo_state_v1_9";
-    const LEGACY_KEYS = ["tpzoo_bingo_state_v1_8", "tpzoo_bingo_state_v1_7", "tpzoo_bingo_state_v1_6", "tpzoo_bingo_state_v1_5", "tpzoo_bingo_state_v1_4", "tpzoo_bingo_state_v1_3", "tpzoo_bingo_state_v1_2"];
+    const STORAGE_KEY = "tpzoo_bingo_state_v1_10";
+    const LEGACY_KEYS = ["tpzoo_bingo_state_v1_9", "tpzoo_bingo_state_v1_8", "tpzoo_bingo_state_v1_7", "tpzoo_bingo_state_v1_6", "tpzoo_bingo_state_v1_5", "tpzoo_bingo_state_v1_4", "tpzoo_bingo_state_v1_3", "tpzoo_bingo_state_v1_2"];
     const IDB_NAME = "TPZooBingoOfflineDB";
     const IDB_STORE = "appStateStore";
 
@@ -3098,16 +3204,18 @@
         try {
           const tx = db.transaction(IDB_STORE, "readonly");
           const store = tx.objectStore(IDB_STORE);
-          const req = store.get(STORAGE_KEY);
-          req.onsuccess = () => {
-            if (req.result) {
-              resolve(req.result);
-            } else {
-              const fallbackReq = store.get("tpzoo_bingo_state_v1_8");
-              fallbackReq.onsuccess = () => resolve(fallbackReq.result || null);
-              fallbackReq.onerror = () => resolve(null);
-            }
+          const keysToTry = [STORAGE_KEY, ...LEGACY_KEYS];
+          let idx = 0;
+          const tryNextKey = () => {
+            if (idx >= keysToTry.length) return resolve(null);
+            const req = store.get(keysToTry[idx++]);
+            req.onsuccess = () => {
+              if (req.result) resolve(req.result);
+              else tryNextKey();
+            };
+            req.onerror = () => tryNextKey();
           };
+          tryNextKey();
           req.onerror = () => resolve(null);
         } catch (e) {
           resolve(null);
@@ -3201,43 +3309,79 @@
     }
 
     /* ==========================================================================
-       模組 E：離線 Canvas 圖片壓縮（最大邊 380px / JPEG 品質 0.72）
+       模組 E：離線 Canvas 圖片壓縮（支援 iPad 高畫質相機照片，自動縮放至 420px）
        ========================================================================== */
+    function drawImageCompressed(img) {
+      const MAX_EDGE = 420;
+      let w = img.naturalWidth || img.width;
+      let h = img.naturalHeight || img.height;
+
+      if (!w || !h) {
+        throw new Error("無效的影像尺寸");
+      }
+
+      if (w > h) {
+        if (w > MAX_EDGE) {
+          h = Math.round((h * MAX_EDGE) / w);
+          w = MAX_EDGE;
+        }
+      } else {
+        if (h > MAX_EDGE) {
+          w = Math.round((w * MAX_EDGE) / h);
+          h = MAX_EDGE;
+        }
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+
+      return canvas.toDataURL("image/jpeg", 0.75);
+    }
+
     function compressPhotoFile(file) {
       return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onerror = () => reject(new Error("檔案讀取失敗"));
-        reader.onload = (e) => {
-          const img = new Image();
-          img.onerror = () => reject(new Error("圖片解析失敗"));
-          img.onload = () => {
-            const MAX_EDGE = 380;
-            let w = img.width;
-            let h = img.height;
-
-            if (w > h) {
-              if (w > MAX_EDGE) {
-                h = Math.round((h * MAX_EDGE) / w);
-                w = MAX_EDGE;
+        const readViaDataUrl = () => {
+          const reader = new FileReader();
+          reader.onerror = () => reject(new Error("檔案讀取失敗"));
+          reader.onload = (e) => {
+            const img = new Image();
+            img.onerror = () => reject(new Error("圖片解析失敗"));
+            img.onload = () => {
+              try {
+                resolve(drawImageCompressed(img));
+              } catch (err) {
+                reject(err);
               }
-            } else {
-              if (h > MAX_EDGE) {
-                w = Math.round((w * MAX_EDGE) / h);
-                h = MAX_EDGE;
-              }
-            }
-
-            const canvas = document.createElement("canvas");
-            canvas.width = w;
-            canvas.height = h;
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(img, 0, 0, w, h);
-
-            resolve(canvas.toDataURL("image/jpeg", 0.72));
+            };
+            img.src = e.target.result;
           };
-          img.src = e.target.result;
+          reader.readAsDataURL(file);
         };
-        reader.readAsDataURL(file);
+
+        if (window.URL && URL.createObjectURL) {
+          const objUrl = URL.createObjectURL(file);
+          const img = new Image();
+          img.onload = () => {
+            try {
+              const dataUrl = drawImageCompressed(img);
+              URL.revokeObjectURL(objUrl);
+              resolve(dataUrl);
+            } catch (err) {
+              URL.revokeObjectURL(objUrl);
+              readViaDataUrl();
+            }
+          };
+          img.onerror = () => {
+            URL.revokeObjectURL(objUrl);
+            readViaDataUrl();
+          };
+          img.src = objUrl;
+        } else {
+          readViaDataUrl();
+        }
       });
     }
 
@@ -3418,24 +3562,88 @@
       document.getElementById("taskModal").classList.remove("open");
     }
 
+    async function saveCompressedCellPhoto(compressedDataUrl) {
+      if (editingCellId === null) return;
+      state.photos[editingCellId] = compressedDataUrl;
+      delete state.manualChecked[editingCellId];
+      await persistState();
+      renderTaskPreview();
+      renderBoard(true);
+    }
+
     async function onPhotoFileChosen(evt) {
-      const file = evt.target.files && evt.target.files[0];
-      evt.target.value = "";
-      if (!file || editingCellId === null) return;
+      const inputEl = evt.target;
+      const file = inputEl.files && inputEl.files[0];
+      if (!file || editingCellId === null) {
+        inputEl.value = "";
+        return;
+      }
 
       const stage = document.getElementById("previewStage");
       stage.innerHTML = `<div class="preview-empty-msg">⏳ 正在壓縮並儲存合照，請稍候...</div>`;
 
       try {
         const compressed = await compressPhotoFile(file);
-        state.photos[editingCellId] = compressed;
-        delete state.manualChecked[editingCellId];
-        await persistState();
-        renderTaskPreview();
-        renderBoard(true);
+        await saveCompressedCellPhoto(compressed);
       } catch (err) {
         renderTaskPreview();
         showToast("❌ 照片處理失敗，請重新嘗試！");
+      } finally {
+        // 必須在讀取與壓縮完成後再清空 input.value，避免 iPad Safari 提前釋放相機暫存檔
+        inputEl.value = "";
+      }
+    }
+
+    /* 網頁內建即時相機控制模組 */
+    let liveMediaStream = null;
+    let currentFacingMode = "environment";
+
+    function stopLiveCameraStream() {
+      if (liveMediaStream) {
+        liveMediaStream.getTracks().forEach((track) => track.stop());
+        liveMediaStream = null;
+      }
+      const videoEl = document.getElementById("liveCameraVideo");
+      if (videoEl) videoEl.srcObject = null;
+    }
+
+    function closeLiveCameraModal() {
+      stopLiveCameraStream();
+      document.getElementById("liveCameraModal").classList.remove("open");
+    }
+
+    async function startLiveCamera(facingMode = "environment") {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        // 若處於不支援 getUserMedia 的環境（如 Safari 本機 file://），自動轉由系統相機開啟
+        showToast("📷 正在呼叫系統相機...");
+        document.getElementById("cameraInput").click();
+        return;
+      }
+
+      stopLiveCameraStream();
+      const videoEl = document.getElementById("liveCameraVideo");
+      const modalEl = document.getElementById("liveCameraModal");
+
+      try {
+        let stream = null;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: facingMode } },
+            audio: false
+          });
+        } catch (firstErr) {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        }
+
+        liveMediaStream = stream;
+        currentFacingMode = facingMode;
+        videoEl.srcObject = stream;
+        modalEl.classList.add("open");
+        await videoEl.play();
+      } catch (err) {
+        closeLiveCameraModal();
+        showToast("⚠️ 無法啟動網頁鏡頭，改為呼叫系統相機...");
+        document.getElementById("cameraInput").click();
       }
     }
 
@@ -3453,6 +3661,8 @@
 
       const displayValue = isLocalFile ? "https://www.zoo.gov.taipei/" : currentHref;
       urlInput.value = displayValue;
+      const openLinkBtn = document.getElementById("btnOpenQrLink");
+      if (openLinkBtn) openLinkBtn.href = displayValue;
 
       const hintEl = document.getElementById("qrHintText");
       if (isLocalFile) {
@@ -3776,10 +3986,25 @@
         const dataUrl = canvas.toDataURL("image/png");
         const imgEl = document.getElementById("posterPreviewImg");
         const dlBtn = document.getElementById("btnDownloadPoster");
+        const fileName = `台北市立動物園賓果成果_${classLabel}_${groupLabel}_${dateLabel}.png`;
 
         imgEl.src = dataUrl;
-        dlBtn.href = dataUrl;
-        dlBtn.download = `台北市立動物園賓果成果_${classLabel}_${groupLabel}_${dateLabel}.png`;
+        dlBtn.download = fileName;
+
+        canvas.toBlob((blob) => {
+          if (blob) {
+            if (dlBtn.dataset.blobUrl) {
+              URL.revokeObjectURL(dlBtn.dataset.blobUrl);
+            }
+            const blobUrl = URL.createObjectURL(blob);
+            dlBtn.href = blobUrl;
+            dlBtn.dataset.blobUrl = blobUrl;
+            dlBtn._latestBlob = blob;
+            dlBtn._latestFileName = fileName;
+          } else {
+            dlBtn.href = dataUrl;
+          }
+        }, "image/png");
 
         document.getElementById("posterModal").classList.add("open");
         playStampChime();
@@ -3854,14 +4079,17 @@
 
       // QR Code 彈窗事件
       document.getElementById("qrUrlInput").addEventListener("input", (e) => {
-        OfflineQRCode.renderToCanvas(document.getElementById("qrCanvas"), e.target.value.trim());
+        const val = e.target.value.trim() || "https://www.zoo.gov.taipei/";
+        OfflineQRCode.renderToCanvas(document.getElementById("qrCanvas"), val);
+        const openLinkBtn = document.getElementById("btnOpenQrLink");
+        if (openLinkBtn) openLinkBtn.href = val;
       });
       document.getElementById("btnCopyUrl").addEventListener("click", copyShareUrl);
       document.getElementById("btnCloseQrModal").addEventListener("click", () => {
         document.getElementById("qrModal").classList.remove("open");
       });
 
-      // 遊園地圖彈窗與縮放事件（支援按鈕階梯縮放、200% 快捷鍵與雙擊定點放大）
+      // 遊園地圖彈窗與縮放事件（支援按鈕階梯縮放、200% 快捷鍵、滑鼠雙擊與 iPad 雙指/雙擊定點放大）
       document.getElementById("btnCloseMapModal").addEventListener("click", () => {
         document.getElementById("mapModal").classList.remove("open");
       });
@@ -3880,16 +4108,35 @@
         btnToggleBingoPins.textContent = isHidden ? "🎯 尋寶標記：關" : "🎯 尋寶標記：開";
       });
 
-      zooMapWrap.addEventListener("dblclick", (e) => {
+      const handleMapFocalToggle = (clientX, clientY) => {
         const rect = zooMapWrap.getBoundingClientRect();
-        const rx = (e.clientX - rect.left) / rect.width;
-        const ry = (e.clientY - rect.top) / rect.height;
+        const rx = (clientX - rect.left) / rect.width;
+        const ry = (clientY - rect.top) / rect.height;
         if (currentMapZoom > 100) {
           updateMapZoom(100);
         } else {
           updateMapZoom(220, rx, ry);
         }
+      };
+
+      zooMapWrap.addEventListener("dblclick", (e) => {
+        handleMapFocalToggle(e.clientX, e.clientY);
       });
+
+      // iPad 觸控雙擊定點放大支援
+      let lastMapTapTime = 0;
+      zooMapWrap.addEventListener("touchend", (e) => {
+        if (e.touches && e.touches.length > 0) return;
+        const now = Date.now();
+        if (now - lastMapTapTime < 320 && e.changedTouches && e.changedTouches[0]) {
+          e.preventDefault();
+          const touch = e.changedTouches[0];
+          handleMapFocalToggle(touch.clientX, touch.clientY);
+          lastMapTapTime = 0;
+        } else {
+          lastMapTapTime = now;
+        }
+      }, { passive: false });
 
       // 點擊地圖上的25格動物標記可顯示館區與觀察任務提示
       document.querySelectorAll(".bingo-map-node").forEach((node) => {
@@ -3925,21 +4172,50 @@
         });
       });
 
-      // 任務拍照互動彈窗四顆按鈕
+      // 任務拍照互動彈窗按鈕與原生相機/相簿選擇器
       document.getElementById("btnCloseTaskModal").addEventListener("click", closeTaskModal);
 
-      document.getElementById("btnModalCamera").addEventListener("click", () => {
-        ensureAudioCtx();
-        document.getElementById("cameraInput").click();
-      });
-
-      document.getElementById("btnModalAlbum").addEventListener("click", () => {
-        ensureAudioCtx();
-        document.getElementById("albumInput").click();
+      // 鍵盤無障礙操作支援（Enter/Space 觸發 label）
+      ["btnModalCamera", "btnModalAlbum"].forEach((lblId) => {
+        const lbl = document.getElementById(lblId);
+        lbl.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            lbl.click();
+          }
+        });
       });
 
       document.getElementById("cameraInput").addEventListener("change", onPhotoFileChosen);
       document.getElementById("albumInput").addEventListener("change", onPhotoFileChosen);
+
+      // 網頁鏡頭即時拍控制事件
+      document.getElementById("btnModalLiveCam").addEventListener("click", () => {
+        ensureAudioCtx();
+        startLiveCamera("environment");
+      });
+
+      document.getElementById("btnCloseLiveCam").addEventListener("click", closeLiveCameraModal);
+
+      document.getElementById("btnSwitchFacing").addEventListener("click", () => {
+        const nextMode = currentFacingMode === "environment" ? "user" : "environment";
+        startLiveCamera(nextMode);
+      });
+
+      document.getElementById("btnCaptureShutter").addEventListener("click", async () => {
+        const videoEl = document.getElementById("liveCameraVideo");
+        if (!videoEl || !videoEl.videoWidth || !videoEl.videoHeight) {
+          showToast("⚠️ 相機畫面尚未就緒，請稍候再試");
+          return;
+        }
+        try {
+          const compressed = drawImageCompressed(videoEl);
+          closeLiveCameraModal();
+          await saveCompressedCellPhoto(compressed);
+        } catch (err) {
+          showToast("❌ 拍照擷取失敗，請重試");
+        }
+      });
 
       document.getElementById("btnModalNoPhoto").addEventListener("click", async () => {
         if (editingCellId === null) return;
@@ -3999,13 +4275,28 @@
         showToast("🔄 已重設全部進度，準備展開新的挑戰！");
       });
 
-      // 點擊遮罩背景關閉彈窗
+      // 點擊遮罩背景關閉彈窗（若為即時相機視窗則同步釋放鏡頭）
       document.querySelectorAll(".modal-overlay").forEach((overlay) => {
         overlay.addEventListener("click", (e) => {
           if (e.target === overlay) {
-            overlay.classList.remove("open");
+            if (overlay.id === "liveCameraModal") {
+              closeLiveCameraModal();
+            } else {
+              overlay.classList.remove("open");
+            }
           }
         });
+      });
+
+      // 支援外接鍵盤按 Escape 關閉目前彈窗
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          if (document.getElementById("liveCameraModal").classList.contains("open")) {
+            closeLiveCameraModal();
+            return;
+          }
+          document.querySelectorAll(".modal-overlay.open").forEach((m) => m.classList.remove("open"));
+        }
       });
 
       renderBoard(false);
